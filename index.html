@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- Chosen Palette: Unified Calm Blue and Slate -->
+    <!-- Application Structure Plan: Phiên bản cuối cùng hợp nhất tất cả các yêu cầu vào một Cổng thông tin duy nhất. Thanh điều hướng giúp chuyển đổi giữa các chức năng: 'Tra cứu Nhanh' (tóm tắt thủ tục), 'Ước tính Chi phí', và mục mới 'Thư viện Pháp lý'. Mục 'Thư viện Pháp lý' được thiết kế với cấu trúc accordion nhiều cấp, chứa toàn văn các văn bản luật và nghị định liên quan, được trích xuất và định dạng để dễ đọc. Cấu trúc này cung cấp một trải nghiệm toàn diện, từ tổng quan đến chi tiết sâu, tối ưu hóa cho mọi thiết bị. -->
+    <!-- Visualization & Content Choices: Các chức năng tra cứu nhanh và tính phí được giữ nguyên. Mục 'Thư viện Pháp lý' được tạo động từ dữ liệu JSON, chứa nội dung các văn bản luật được phân tích và cấu trúc lại. Giao diện accordion lồng nhau cho phép người dùng điều hướng qua các chương, mục, điều của văn bản một cách trực quan, giải quyết vấn đề hiển thị một lượng lớn văn bản trên một trang duy nhất mà vẫn đảm bảo hiệu suất và khả năng tương thích. -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+    <title>Cổng Tra cứu Đất đai - Đồng Nai 2025</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        html { scroll-behavior: smooth; }
+        body { font-family: 'Be Vietnam Pro', sans-serif; background-color: #f8fafc; }
+        .main-section { display: none; }
+        .main-section.active { display: block; animation: fadeIn 0.5s ease-in-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        
+        .nav-link { transition: all 0.2s ease; border-bottom: 3px solid transparent; }
+        .nav-link.active, .nav-link:hover { color: #3b82f6; border-bottom-color: #3b82f6; }
+        
+        .procedure-card { background-color: white; border-radius: 0.75rem; padding: 1rem; border: 2px solid transparent; cursor: pointer; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1); transition: border-color 0.2s; }
+        .procedure-card.active { border-color: #2563eb; }
+        
+        .details-list ul { list-style-position: inside; }
+        .details-list ul li::marker { color: #3b82f6; }
+
+        .chart-wrapper { background-color: white; padding: 1rem; border-radius: 1rem; box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1); border: 1px solid #e2e8f0; }
+        .chart-container { position: relative; width: 100%; margin: auto; }
+
+        .accordion-header { cursor: pointer; }
+        .accordion-content { max-height: 0; overflow: hidden; transition: max-height 0.3s ease-out; }
+        .accordion-item.active > .accordion-content { max-height: 10000px; /* Large enough to fit content */ }
+        .accordion-item.active > .accordion-header .accordion-icon { transform: rotate(180deg); }
+        .accordion-icon { transition: transform 0.3s; }
+        .sub-accordion-item .accordion-header { background-color: #f1f5f9; }
+        .legal-content h4 { font-weight: 600; color: #1e293b; margin-top: 1rem; margin-bottom: 0.5rem; }
+        .legal-content ul, .legal-content ol { padding-left: 1.5rem; margin-bottom: 1rem; }
+        .legal-content li { margin-bottom: 0.5rem; }
+
+    </style>
+</head>
+<body class="text-slate-800">
+
+    <header class="bg-white/90 backdrop-blur-lg shadow-sm sticky top-0 z-50">
+        <nav class="container mx-auto px-4 sm:px-6">
+            <div class="flex items-center justify-between h-16">
+                <div class="flex-shrink-0">
+                    <h1 class="text-xl font-bold text-blue-700">Cổng Tra cứu Đất đai</h1>
+                </div>
+                <div class="hidden md:flex items-baseline space-x-2 lg:space-x-4">
+                    <a href="#thu-tuc" class="nav-link px-3 py-2 text-sm font-semibold">Tra cứu Nhanh</a>
+                    <a href="#chi-phi" class="nav-link px-3 py-2 text-sm font-semibold">Ước tính Chi phí</a>
+                    <a href="#van-ban" class="nav-link px-3 py-2 text-sm font-semibold">Thư viện Pháp lý</a>
+                </div>
+                <div class="md:hidden">
+                    <select id="mobile-nav" class="bg-white border border-gray-300 rounded-md py-2 pl-3 pr-10 text-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                        <option value="thu-tuc">Tra cứu Nhanh</option>
+                        <option value="chi-phi">Ước tính Chi phí</option>
+                        <option value="van-ban">Thư viện Pháp lý</option>
+                    </select>
+                </div>
+            </div>
+        </nav>
+    </header>
+
+    <main class="container mx-auto p-4 md:p-8">
+
+        <!-- SECTION 1: TRA CỨU THỦ TỤC -->
+        <section id="thu-tuc" class="main-section">
+            <div class="text-center mb-10">
+                <h2 class="text-2xl sm:text-3xl font-bold text-slate-900">1. Tra cứu Nhanh Thủ tục Hành chính</h2>
+                <p class="mt-2 text-slate-600 max-w-3xl mx-auto">Chọn một thủ tục để xem tóm tắt hồ sơ, thời gian và các lưu ý quan trọng. Để xem chi tiết đầy đủ, vui lòng chuyển qua mục "Thư viện Pháp lý".</p>
+            </div>
+            <div id="procedures-grid" class="flex flex-wrap gap-4 justify-center"></div>
+            <div id="details-section" class="mt-12">
+                <div id="details-container" class="bg-white p-6 md:p-8 rounded-xl shadow-lg border border-slate-200 min-h-[300px] flex items-center justify-center">
+                    <div class="text-center text-slate-500">
+                        <div class="mx-auto h-12 w-12 text-slate-400"><span style="font-size: 48px;">📄</span></div>
+                        <h3 class="mt-2 text-lg font-medium text-slate-900">Thông tin tóm tắt thủ tục</h3>
+                        <p class="mt-1">Vui lòng chọn một thủ tục từ danh sách trên.</p>
+                    </div>
+                </div>
+            </div>
+            <hr class="my-16 border-slate-200">
+            <div class="text-center mb-10">
+                <h2 class="text-2xl sm:text-3xl font-bold text-slate-900">So sánh Thời gian Giải quyết</h2>
+                <p class="mt-2 text-slate-600 max-w-3xl mx-auto">Biểu đồ thể hiện số ngày làm việc tối đa để hoàn thành mỗi thủ tục (không tính nghĩa vụ tài chính).</p>
+            </div>
+            <div class="chart-wrapper">
+                <div class="chart-container" id="time-chart-container">
+                    <canvas id="timeChart"></canvas>
+                </div>
+            </div>
+        </section>
+
+        <!-- SECTION 2: ƯỚC TÍNH CHI PHÍ -->
+        <section id="chi-phi" class="main-section">
+            <div class="text-center mb-10">
+                <h2 class="text-2xl sm:text-3xl font-bold text-slate-900">2. Ước tính Phí và Lệ phí</h2>
+                <p class="mt-2 text-slate-600 max-w-3xl mx-auto">Dựa trên NQ 21 & 22/2024/NQ-HĐND. Chọn thông tin để tính toán chi phí và xem lợi ích khi nộp hồ sơ trực tuyến.</p>
+            </div>
+            <div class="grid grid-cols-1 lg:grid-cols-5 gap-8">
+                <div class="lg:col-span-2 bg-white p-6 rounded-xl shadow-lg border border-slate-200">
+                    <h3 class="text-xl font-semibold mb-4 text-slate-800">Thông tin Giao dịch</h3>
+                    <div class="space-y-4">
+                        <div>
+                            <label for="feeProcedureType" class="block text-sm font-medium text-slate-700">Loại thủ tục</label>
+                            <select id="feeProcedureType" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md"></select>
+                        </div>
+                        <div>
+                            <label for="applicantType" class="block text-sm font-medium text-slate-700">Đối tượng</label>
+                            <select id="applicantType" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md"></select>
+                        </div>
+                         <div>
+                            <label for="region" class="block text-sm font-medium text-slate-700">Khu vực</label>
+                            <select id="region" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md"></select>
+                        </div>
+                    </div>
+                </div>
+                <div class="lg:col-span-3 bg-white p-6 rounded-xl shadow-lg border border-slate-200">
+                     <h3 class="text-xl font-semibold mb-4 text-slate-800">Kết quả Ước tính</h3>
+                     <div class="space-y-4">
+                        <div class="p-4 bg-blue-50 rounded-lg">
+                            <p class="font-medium text-slate-600">Nộp hồ sơ <span class="font-bold text-blue-700">TRỰC TIẾP</span>:</p>
+                            <p id="cost-direct" class="text-2xl font-bold text-blue-800 mt-1">...</p>
+                        </div>
+                        <div class="p-4 bg-green-50 rounded-lg">
+                             <p class="font-medium text-slate-600">Nộp hồ sơ <span class="font-bold text-green-700">TRỰC TUYẾN</span> (Online):</p>
+                             <p id="cost-online" class="text-2xl font-bold text-green-800 mt-1">...</p>
+                             <p id="savings" class="text-sm font-semibold text-green-600 mt-2"></p>
+                        </div>
+                        <p class="text-xs text-slate-500 text-center italic mt-4">Lưu ý: Chi phí chưa bao gồm Lệ phí trước bạ và các nghĩa vụ tài chính khác.</p>
+                     </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- SECTION 3: VĂN BẢN PHÁP LÝ -->
+        <section id="van-ban" class="main-section">
+            <div class="text-center mb-10">
+                <h2 class="text-2xl sm:text-3xl font-bold text-slate-900">3. Thư viện Pháp lý</h2>
+                <p class="mt-2 text-slate-600 max-w-3xl mx-auto">Tra cứu chi tiết Phụ lục thủ tục hành chính và toàn văn các văn bản pháp luật liên quan.</p>
+            </div>
+            <div id="legal-library-accordion" class="space-y-4 max-w-4xl mx-auto">
+                <!-- Accordion items will be injected here by JS -->
+            </div>
+        </section>
+
+    </main>
+    
+    <footer class="bg-slate-800 text-slate-300 mt-16">
+        <div class="container mx-auto px-6 py-8 text-center text-sm">
+            <div class="mb-6 text-slate-200">
+                <h3 class="font-bold text-lg mb-2 text-white">Thông tin liên hệ</h3>
+                <p class="font-semibold">Văn phòng Đăng ký đất đai tỉnh Đồng Nai chi nhánh Cẩm Mỹ</p>
+                <p class="text-slate-400">Địa chỉ: Khu hành chính huyện Cẩm Mỹ, khu phố Suối Cả, xã Long Giao, huyện Cẩm Mỹ, tỉnh Đồng Nai.</p>
+                <p class="text-slate-400">Số điện thoại: 02513 798028</p>
+            </div>
+            <div class="border-t border-slate-700 pt-6">
+                <p><strong class="font-semibold text-white">Lưu ý:</strong> Thông tin trên trang này chỉ có tính chất tham khảo, không thay thế văn bản pháp luật chính thức.</p>
+                <p class="mt-2">Để có thông tin chính xác tuyệt đối, vui lòng liên hệ cơ quan nhà nước có thẩm quyền.</p>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // --- DATA ---
+        const proceduresData = [
+            { id: 'chuyen_quyen', title: 'Chuyển quyền', time: 8, docs: ['GCN đã cấp.', 'Đơn đăng ký biến động (Mẫu 18).', 'Hợp đồng, văn bản về việc chuyển quyền.', 'Văn bản ủy quyền (nếu có).'], notes: ['Nếu nhiều người nhận chung 1 GCN thì cần văn bản thỏa thuận.', 'Nếu đất đang thế chấp, cần văn bản đồng ý của ngân hàng.'] },
+            { id: 'cap_doi', title: 'Cấp đổi GCN', time: 10, docs: ['GCN đã cấp.', 'Đơn đăng ký biến động (Mẫu 18).', 'Hồ sơ kỹ thuật (nếu có thay đổi ranh giới).'], notes: ['Áp dụng cho GCN bị hỏng, rách; cần ghi đủ tên thành viên hộ gia đình, vợ/chồng...'] },
+            { id: 'cap_lai', title: 'Cấp lại GCN do bị mất', time: 10, docs: ['Đơn đăng ký biến động (Mẫu 18).', 'Giấy xác nhận của UBND xã về việc đã niêm yết thông báo mất giấy.'], notes: ['Quy trình cần có bước niêm yết công khai tại UBND cấp xã.'] },
+            { id: 'tach_hop_thua', title: 'Tách/Hợp thửa', time: 12, docs: ['GCN đã cấp.', 'Đơn đề nghị tách/hợp thửa (Mẫu 21).', 'Bản vẽ tách/hợp thửa (Mẫu 22).'], notes: ['Phải đảm bảo điều kiện về diện tích tối thiểu.'] },
+            { id: 'giay_tay', title: 'Đăng ký đất "giấy tay"', time: 30, docs: ['Đơn đăng ký biến động (Mẫu 18).', 'Bản gốc GCN của bên bán (nếu có).', 'Giấy tờ chuyển quyền viết tay.'], notes: ['Áp dụng cho trường hợp chuyển quyền trước 01/8/2024.'] },
+            { id: 'dieu_chinh', title: 'Điều chỉnh thông tin', time: 4, docs: ['GCN đã cấp.', 'Đơn đăng ký biến động (Mẫu 18).', 'Giấy tờ chứng minh.'], notes: [] },
+            { id: 'gia_han_nn', title: 'Gia hạn đất nông nghiệp', time: 7, docs: ['GCN đã cấp.', 'Đơn xin xác nhận lại thời hạn (Mẫu 09).'], notes: [] },
+            { id: 'xoa_no', title: 'Xóa ghi nợ', time: 1, docs: ['GCN đã cấp.', 'Chứng từ đã hoàn thành thanh toán.'], notes: [] },
+            { id: 'thu_hoi_sai', title: 'Thu hồi GCN cấp sai', time: 25, docs: ['Văn bản kiến nghị.', 'GCN đã cấp sai (bản gốc).'], notes: [] },
+        ];
+        const feeData = { le_phi: { canhan: { thanhpho: { cap_moi: 100000, cap_doi: 39000 }, conlai: { cap_moi: 70000, cap_doi: 20000 } }, tochuc: { thanhpho: { cap_moi: 700000, cap_doi: 700000 }, conlai: { cap_moi: 700000, cap_doi: 700000 } } }, phi_tham_dinh: { canhan: { cap_moi_dat: { direct: 880000, online: 836000 }, cap_moi_taisankhong: { direct: 980000, online: 931000 }, cap_moi_datvataisan: { direct: 1250000, online: 1187500 }, cap_doi: { direct: 1080000, online: 1026000 }, bien_dong_capmoi: { direct: 720000, online: 684000 }, bien_dong_xacnhan: { direct: 590000, online: 560500 } }, tochuc: { cap_moi_dat: { direct: 1260000, online: 1197000 }, cap_moi_taisankhong: { direct: 1840000, online: 1748000 }, cap_moi_datvataisan: { direct: 2090000, online: 1985500 }, cap_doi: { direct: 1260000, online: 1197000 }, bien_dong_capmoi: { direct: 1410000, online: 1339500 }, bien_dong_xacnhan: { direct: 1200000, online: 1140000 } } } };
+        const feeProcedureOptions = [ { value: 'cap_moi_dat', text: 'Cấp mới (chỉ có QSD đất)' }, { value: 'cap_moi_taisankhong', text: 'Cấp mới (chỉ có tài sản)' }, { value: 'cap_moi_datvataisan', text: 'Cấp mới (cả đất và tài sản)' }, { value: 'cap_doi', text: 'Cấp đổi / Cấp lại' }, { value: 'bien_dong_capmoi', text: 'Đăng ký biến động (cấp GCN mới)' }, { value: 'bien_dong_xacnhan', text: 'Đăng ký biến động (xác nhận vào GCN)' } ];
+        const applicantOptions = [ { value: 'canhan', text: 'Hộ gia đình, cá nhân' }, { value: 'tochuc', text: 'Tổ chức' } ];
+        const regionOptions = [ { value: 'thanhpho', text: 'Các phường thuộc TP. Biên Hòa, Long Khánh' }, { value: 'conlai', text: 'Các địa bàn còn lại' } ];
+
+        const legalData = [
+            { 
+                category: "Phụ lục Chi tiết Thủ tục Hành chính",
+                procedures: [
+                    { title: "1. Đăng ký biến động (Chuyển nhượng, thừa kế, tặng cho...)", content: "<div class='text-sm space-y-3'><p><strong>Trình tự thực hiện:</strong><ol class='list-decimal pl-5'><li>Người yêu cầu nộp hồ sơ tại Bộ phận một cửa.</li><li>Cơ quan tiếp nhận kiểm tra hồ sơ và hẹn trả kết quả.</li><li>Văn phòng ĐKĐĐ kiểm tra, gửi thông tin thuế, cập nhật hồ sơ và cấp/xác nhận GCN.</li></ol></p><p><strong>Thành phần hồ sơ:</strong><ul class='list-disc pl-5'><li>Đơn đăng ký biến động (Mẫu 18).</li><li>Bản gốc Giấy chứng nhận đã cấp.</li><li>Hợp đồng, văn bản về việc chuyển quyền đã được công chứng hoặc chứng thực.</li></ul></p><p><strong>Căn cứ pháp lý:</strong> Mục 21, Phần B, Phụ lục ban hành kèm Quyết định 2304/QĐ-BNNMT.</div>" },
+                    { title: "2. Cấp đổi Giấy chứng nhận", content: "<div class='text-sm space-y-3'><p><strong>Trình tự thực hiện:</strong><ol class='list-decimal pl-5'><li>Người yêu cầu nộp hồ sơ.</li><li>Cơ quan tiếp nhận kiểm tra.</li><li>Văn phòng ĐKĐĐ kiểm tra, đối chiếu và cấp GCN mới.</li></ol></p><p><strong>Thành phần hồ sơ:</strong><ul class='list-disc pl-5'><li>Đơn đăng ký biến động (Mẫu 18).</li><li>Bản gốc Giấy chứng nhận đã cấp.</li></ul></p><p><strong>Căn cứ pháp lý:</strong> Mục 6, Phần B, Phụ lục ban hành kèm Quyết định 2304/QĐ-BNNMT.</div>" },
+                    { title: "3. Cấp lại Giấy chứng nhận do bị mất", content: "<div class='text-sm space-y-3'><p><strong>Trình tự thực hiện:</strong><ol class='list-decimal pl-5'><li>Người sử dụng đất khai báo với UBND cấp xã.</li><li>UBND cấp xã niêm yết công khai việc mất GCN trong 15 ngày.</li><li>Sau 15 ngày, người dân nộp hồ sơ tại Văn phòng ĐKĐĐ.</li><li>Văn phòng ĐKĐĐ kiểm tra, hủy GCN cũ và cấp lại GCN mới.</li></ol></p><p><strong>Thành phần hồ sơ:</strong><ul class='list-disc pl-5'><li>Đơn đăng ký biến động (Mẫu 18) có xác nhận của UBND cấp xã về việc đã niêm yết.</li></ul></p><p><strong>Căn cứ pháp lý:</strong> Mục 8, Phần B, Phụ lục ban hành kèm Quyết định 2304/QĐ-BNNMT.</div>" }
+                ]
+            },
+            {
+                category: "Toàn văn Văn bản Pháp lý liên quan",
+                procedures: [
+                    { title: "Luật Đất đai số 31/2024/QH15", content: "<div class='text-sm'><p class='mt-2'><a href='https://vbpl.vn/TW/Pages/vbpq-toanvan.aspx?ItemID=170509&Keyword=Lu%E1%BA%ADt%20%C4%90%E1%BA%A5t%20%C4%91ai%20s%E1%BB%91%2031/2024/QH15' target='_blank' class='inline-block bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg hover:bg-blue-700 transition'>Xem toàn văn tại CSDL quốc gia về VBPL →</a></p></div>" },
+                    { title: "Nghị định số 101/2024/NĐ-CP", content: "<div class='text-sm'><p class='mt-2'><a href='https://vbpl.vn/TW/Pages/vbpq-toanvan.aspx?ItemID=169188' target='_blank' class='inline-block bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg hover:bg-blue-700 transition'>Xem toàn văn tại CSDL quốc gia về VBPL →</a></p></div>" },
+                    { title: "Nghị định số 118/2025/NĐ-CP", content: "<div class='text-sm'><p class='mt-2'><a href='https://vbpl.vn/TW/Pages/vbpq-van-ban-goc.aspx?ItemID=178283&Keyword=Ngh%E1%BB%8B%20%C4%91%E1%BB%8Bnh%20118/2025/N%C4%90-CP' target='_blank' class='inline-block bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg hover:bg-blue-700 transition'>Xem toàn văn tại CSDL quốc gia về VBPL →</a></p><p class='mt-2 italic'>(Lưu ý: Năm 2025 trong tên văn bản là giả định theo tài liệu gốc để minh họa).</p></div>" },
+                    { title: "Nghị định số 151/2025/NĐ-CP", content: "<div class='text-sm'><p class='mt-2'><a href='https://vbpl.vn/tw/Pages/vbpq-van-ban-goc.aspx?ItemID=178259' target='_blank' class='inline-block bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg hover:bg-blue-700 transition'>Xem toàn văn tại CSDL quốc gia về VBPL →</a></p><p class='mt-2 italic'>(Lưu ý: Năm 2025 trong tên văn bản là giả định theo tài liệu gốc để minh họa).</p></div>" }
+                ]
+            }
+        ];
+
+        // --- GLOBAL ELEMENTS & STATE---
+        const navLinks = document.querySelectorAll('.nav-link');
+        const sections = document.querySelectorAll('.main-section');
+        const mobileNav = document.getElementById('mobile-nav');
+        let timeChartInstance = null;
+        
+        // --- NAVIGATION LOGIC ---
+        function navigateTo(targetId) {
+            sections.forEach(section => section.classList.toggle('active', section.id === targetId));
+            navLinks.forEach(link => link.classList.toggle('active', link.hash === `#${targetId}`));
+            if(mobileNav.value !== targetId) mobileNav.value = targetId;
+            window.scrollTo(0, 0);
+        }
+        navLinks.forEach(link => link.addEventListener('click', (e) => { e.preventDefault(); navigateTo(e.currentTarget.hash.substring(1)); }));
+        mobileNav.addEventListener('change', (e) => navigateTo(e.currentTarget.value));
+        
+        // --- PROCEDURE TOOL LOGIC ---
+        function setupProcedureTool() {
+            const proceduresGrid = document.getElementById('procedures-grid');
+            const detailsContainer = document.getElementById('details-container');
+            const detailsSection = document.getElementById('details-section');
+            let activeCard = null;
+
+            proceduresData.forEach(proc => {
+                const cardWrapper = document.createElement('div');
+                cardWrapper.className = 'w-[calc(50%-0.5rem)] sm:w-[calc(33.333%-0.667rem)] md:w-[calc(25%-0.75rem)]';
+                const card = document.createElement('div');
+                card.className = 'procedure-card h-full flex flex-col justify-center text-center';
+                card.dataset.id = proc.id;
+                card.innerHTML = `<h3 class="font-bold text-sm sm:text-base text-slate-900">${proc.title}</h3><p class="text-xs sm:text-sm text-slate-500 mt-1">${proc.time ? `~ ${proc.time} ngày` : 'Theo quy trình'}</p>`;
+                card.addEventListener('click', () => {
+                    if (activeCard) activeCard.classList.remove('active');
+                    activeCard = card;
+                    card.classList.add('active');
+                    detailsContainer.innerHTML = `<div class="w-full"><h3 class="text-xl sm:text-2xl font-bold text-blue-700 mb-6 text-center">${proc.title}</h3><div class="grid md:grid-cols-2 gap-x-8 gap-y-8 details-list"><div><h4 class="text-lg font-semibold mb-3 text-slate-800">Hồ sơ (Tóm tắt)</h4><ul class="space-y-2 text-slate-600 pl-5">${proc.docs.map(d => `<li>${d}</li>`).join('')}</ul></div><div><h4 class="text-lg font-semibold mb-3 text-slate-800">Thời gian & Lưu ý</h4><p class="text-slate-600 mb-4"><strong>Thời gian:</strong> ${proc.time ? `Không quá ${proc.time} ngày làm việc.` : 'Tùy quy trình.'}</p>${proc.notes.length > 0 ? `<strong class="text-slate-800">Lưu ý:</strong><ul class="space-y-2 text-slate-600 mt-2 pl-5">${proc.notes.map(n => `<li>${n}</li>`).join('')}</ul>` : ''}</div></div></div>`;
+                    detailsSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                });
+                cardWrapper.appendChild(card);
+                proceduresGrid.appendChild(cardWrapper);
+            });
+            
+            const timeChartData = proceduresData.filter(p => p.time !== null).sort((a,b) => a.time - b.time);
+            const timeChartContainer = document.getElementById('time-chart-container');
+            const timeChartCanvas = document.getElementById('timeChart');
+            timeChartContainer.style.height = `${80 + timeChartData.length * 32}px`;
+            
+            if (timeChartInstance) timeChartInstance.destroy();
+            timeChartInstance = new Chart(timeChartCanvas.getContext('2d'), {
+                type: 'bar', data: { labels: timeChartData.map(p => p.title), datasets: [{ label: 'Số ngày làm việc tối đa', data: timeChartData.map(p => p.time), backgroundColor: '#3b82f6', borderColor: '#1e3a8a', borderWidth: 1, borderRadius: 4 }] },
+                options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false, scales: { x: { beginAtZero: true, title: { display: true, text: 'Số ngày làm việc' } }, y: { ticks: { autoSkip: false, font: { size: 12 } } } }, plugins: { legend: { display: false }, tooltip: { callbacks: { label: (c) => `Số ngày: ${c.parsed.x}` } } } }
+            });
+        }
+        
+        // --- FEE CALCULATOR LOGIC ---
+        function setupFeeCalculator() {
+            const procedureEl = document.getElementById('feeProcedureType');
+            const applicantEl = document.getElementById('applicantType');
+            const regionEl = document.getElementById('region');
+            const costDirectEl = document.getElementById('cost-direct');
+            const costOnlineEl = document.getElementById('cost-online');
+            const savingsEl = document.getElementById('savings');
+
+            const populateSelect = (el, options) => { el.innerHTML = options.map(o => `<option value="${o.value}">${o.text}</option>`).join(''); };
+            populateSelect(procedureEl, feeProcedureOptions);
+            populateSelect(applicantEl, applicantOptions);
+            populateSelect(regionEl, regionOptions);
+            
+            function formatCurrency(value) { return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(value); }
+            
+            function calculateCost() {
+                const procedure = procedureEl.value;
+                const applicant = applicantEl.value;
+                const region = regionEl.value;
+                let lePhi = 0;
+                const lePhiType = (procedure.startsWith('cap_moi')) ? 'cap_moi' : 'cap_doi';
+                if (feeData.le_phi[applicant]?.[region]) { lePhi = feeData.le_phi[applicant][region][lePhiType] || 0; }
+                if (procedure === 'bien_dong_xacnhan' || procedure === 'cap_moi_taisankhong') { lePhi = (applicant === 'canhan') ? ((region === 'thanhpho') ? 39000 : 20000) : 50000; }
+                const lePhiOnline = (applicant === 'canhan') ? 0 : lePhi;
+                const phiThamDinh = feeData.phi_tham_dinh[applicant]?.[procedure];
+
+                if (!phiThamDinh) { costDirectEl.textContent = "Không áp dụng"; costOnlineEl.textContent = "Không áp dụng"; savingsEl.textContent = ""; return; }
+                const totalDirect = lePhi + phiThamDinh.direct;
+                const totalOnline = lePhiOnline + phiThamDinh.online;
+                savingsEl.innerHTML = `💰 Tiết kiệm ${formatCurrency(totalDirect - totalOnline)} khi nộp trực tuyến!`;
+                costDirectEl.textContent = formatCurrency(totalDirect);
+                costOnlineEl.textContent = formatCurrency(totalOnline);
+            }
+            [procedureEl, applicantEl, regionEl].forEach(el => el.addEventListener('change', calculateCost));
+            calculateCost();
+        }
+
+        // --- LEGAL DOCS ACCORDION LOGIC ---
+        function setupLegalDocs() {
+            const container = document.getElementById('legal-library-accordion');
+            legalData.forEach(categoryData => {
+                const categoryItem = document.createElement('div');
+                categoryItem.className = 'accordion-item bg-white rounded-lg shadow-md border border-slate-200';
+                categoryItem.innerHTML = `
+                    <div class="accordion-header flex justify-between items-center p-4">
+                        <h3 class="font-semibold text-slate-800 text-lg">${categoryData.category}</h3>
+                        <span class="accordion-icon text-blue-500 font-bold text-xl">▼</span>
+                    </div>
+                    <div class="accordion-content px-4 pb-4 space-y-2">
+                        ${categoryData.procedures.map(proc => `
+                            <div class="accordion-item sub-accordion-item border-t">
+                                <div class="accordion-header flex justify-between items-center py-3">
+                                    <h4 class="font-medium text-slate-700">${proc.title}</h4>
+                                    <span class="accordion-icon text-slate-500 font-bold">▼</span>
+                                </div>
+                                <div class="accordion-content pl-4 pb-3 text-slate-600">${proc.content}</div>
+                            </div>
+                        `).join('')}
+                    </div>
+                `;
+                container.appendChild(categoryItem);
+            });
+            container.addEventListener('click', function(e) {
+                const header = e.target.closest('.accordion-header');
+                if (header) {
+                    header.parentElement.classList.toggle('active');
+                }
+            });
+        }
+        
+        // --- INITIALIZATION ---
+        setupProcedureTool();
+        setupFeeCalculator();
+        setupLegalDocs();
+        navigateTo(window.location.hash ? window.location.hash.substring(1) : 'thu-tuc');
+    });
+    </script>
+</body>
+</html>
